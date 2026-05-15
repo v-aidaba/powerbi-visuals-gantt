@@ -936,7 +936,6 @@ export class Gantt implements IVisual {
         };
         const milestonesCategory = dataView.categorical.categories[milestonesIndex];
         const milestones: { value: PrimitiveValue, index: number }[] = [];
-        const shouldUseSettingsFromPersistProps: boolean = viewMode === powerbi.ViewMode.View || keepSettingsOnFiltering;
 
         const cachedShapes: { [key: string]: MilestoneShape } = {};
         const cachedColors: { [key: string]: string } = {};
@@ -947,21 +946,34 @@ export class Gantt implements IVisual {
             milestonesCategory.values.forEach((value: PrimitiveValue, index: number) => milestones.push({ value, index }));
             milestones.forEach((milestone) => {
                 const value = milestone.value as string;
-                const milestoneObjects = shouldUseSettingsFromPersistProps
-                    ? settingsState.getMilestoneSettings(value)
-                    : milestonesCategory.objects?.[milestone.index];
+
+                // Try all sources in priority order:
+                // 1. persistSettings (3.4.x mechanism) — most reliable if available
+                // 2. milestonesCategory.objects (3.0.12 / standard Power BI persistence) — fallback for migration
+                // 3. Cycling defaults — last resort for genuinely new milestones
+                const persistedSettings = settingsState.getMilestoneSettings(value);
+                const hasPersistedSettings = persistedSettings && Object.keys(persistedSettings).length > 0;
+                const categoryObjects = milestonesCategory.objects?.[milestone.index];
+
+                const milestoneObjects = hasPersistedSettings
+                    ? persistedSettings
+                    : categoryObjects ?? null;
 
                 const selectionBuilder: ISelectionIdBuilder = host
                     .createSelectionIdBuilder()
                     .withCategory(milestonesCategory, milestone.index);
 
                 if (!cachedShapes[value]) {
-                    const savedShape = settingsState.getMilestoneSettings(value)?.milestones?.shapeType as (MilestoneShape | undefined);
+                    const savedShape = (milestoneObjects?.milestones?.shapeType
+                        ?? categoryObjects?.milestones?.shapeType
+                        ?? settingsState.getMilestoneSettings(value)?.milestones?.shapeType) as (MilestoneShape | undefined);
                     cachedShapes[value] = savedShape ?? allShapes[(prevShapeIndex + 1) % allShapes.length];
                     prevShapeIndex++
                 }
                 if (!cachedColors[value]) {
-                    const savedColor = (settingsState.getMilestoneSettings(value)?.milestones as any)?.fill?.solid?.color;
+                    const savedColor = (milestoneObjects?.milestones as any)?.fill?.solid?.color
+                        ?? (categoryObjects?.milestones as any)?.fill?.solid?.color
+                        ?? (settingsState.getMilestoneSettings(value)?.milestones as any)?.fill?.solid?.color;
                     cachedColors[value] = savedColor ?? host.colorPalette.getColor(value).value;
                 }
                 const milestoneDataPoint: MilestoneDataPoint = {
@@ -1839,10 +1851,17 @@ export class Gantt implements IVisual {
             });
 
             this.viewModel.milestoneData = newMilestoneData;
+
+            const isEditMode = options.viewMode === powerbi.ViewMode.Edit || options.viewMode === powerbi.ViewMode.InFocusEdit;
+            const persistSettingsWasEmpty = !this.formattingSettings.milestones.milestoneGroup.persistSettings.value;
+
             if (this.settingsService.state.hasBeenUpdated
-                && (options.viewMode === powerbi.ViewMode.Edit || options.viewMode === powerbi.ViewMode.InFocusEdit)
+                && (isEditMode || persistSettingsWasEmpty)
             ) {
-                // We save state once rendering is done to save current milestones settings because they might be lost after filtering.
+                // Save milestone settings to persistSettings blob.
+                // In edit mode: saves after user changes or filtering.
+                // In reading view with empty persistSettings: one-time migration from 3.0.12
+                // where settings were stored in per-row category objects that may not survive upgrades.
                 this.settingsService.save();
             }
         }
