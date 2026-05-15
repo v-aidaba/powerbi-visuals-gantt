@@ -1087,7 +1087,7 @@ export class Gantt implements IVisual {
         Gantt.downgradeDurationUnitIfNeeded(tasks, durationUnit);
 
         if (values.Parent) {
-            tasks = Gantt.sortTasksWithParents(tasks, sortingOptions);
+            tasks = Gantt.sortHierarchicalTasks(tasks, sortingOptions);
         }
 
         this.updateTaskDetails(tasks, durationUnit, duration, dataView, collapsedTasks);
@@ -1399,7 +1399,15 @@ export class Gantt implements IVisual {
         return extraInformation;
     }
 
-    public static SortTasks(groupedTasks: lodashDictionary<Task[]>): void {
+    /**
+     * Sorts tasks within grouped rows for correct visual layering when tasks overlap
+     * on the same row. Currently sorts by start date (earliest first, longest first on ties).
+     * For parent tasks, also sorts their children to determine default row order —
+     * but only when the user has not applied explicit sorting.
+     * @param groupedTasks Dictionary of task groups keyed by group name
+     * @param isCustomSortingNeeded When true, skips children re-sort to preserve user-defined order
+     */
+    public static sortTasksForLayering(groupedTasks: lodashDictionary<Task[]>, isCustomSortingNeeded: boolean = false): void {
         const taskKeys: string[] = Object.keys(groupedTasks);
 
         const sortingFunction = (a: Task, b: Task) => {
@@ -1425,15 +1433,32 @@ export class Gantt implements IVisual {
                 tasks.sort(sortingFunction);
                 return;
             }
-            tasks.forEach((task: Task) => {
-                if (task.children && task.children.length) {
-                    task.children = task.children.sort(sortingFunction);
-                }
-            });
+            // Skip children re-sort when user has explicit sorting —
+            // children order was already set by sortHierarchicalTasks.
+            // When no custom sorting is applied, sort children by start date (added in v3.3.0)
+            // to provide chronological default row order instead of data-source order.
+            if (!isCustomSortingNeeded) {
+                tasks.forEach((task: Task) => {
+                    if (task.children && task.children.length) {
+                        task.children = task.children.sort(sortingFunction);
+                    }
+                });
+            }
         });
     }
 
-    public static sortTasksWithParents(tasks: Task[], sortingOptions: SortingOptions): Task[] {
+    /**
+     * Sorts tasks that have a parent-child hierarchy by name (using user-selected direction)
+     * and assigns sequential indices respecting the hierarchy: parent first, then its children.
+     * Called only when a Parent column is present in the data model.
+     * @param tasks Flat array of tasks (parents + children)
+     * @param sortingOptions Contains sorting direction and whether custom sorting is active
+     */
+    public static sortHierarchicalTasks(tasks: Task[], sortingOptions: SortingOptions): Task[] {
+        // TODO: Consider using host.locale and sensitivity: "base" here to match
+        // the Intl.Collator in getGroupTasks. Currently uses browser default locale
+        // and case-sensitive comparison, which may produce different order for
+        // locale-specific characters (e.g. Turkish i/I, German ß/ss).
         const sortingFunction = ((a: Task, b: Task) => {
             const sortingDirection = sortingOptions.sortingDirection === SortDirection.Ascending ? 1 : -1;
             const nameA = String(a.name ?? "");
@@ -1447,7 +1472,7 @@ export class Gantt implements IVisual {
 
         let index: number = 0;
         tasks.forEach(task => {
-            if (!task.index && !task.parent) {
+            if (!task.parent) {
                 task.index = index++;
 
                 if (task.children) {
@@ -1456,7 +1481,7 @@ export class Gantt implements IVisual {
                     }
 
                     task.children.forEach(subtask => {
-                        subtask.index = subtask.index === null ? index++ : subtask.index;
+                        subtask.index = index++;
                     });
                 }
             }
@@ -2122,16 +2147,19 @@ export class Gantt implements IVisual {
                 taskKeys.sort(sortingFunction);
             }
 
-            Gantt.SortTasks(groupedTasks);
+            Gantt.sortTasksForLayering(groupedTasks, this.sortingOptions.isCustomSortingNeeded);
 
             for (const key of taskKeys) {
                 const isKeyAlreadyReviewed = alreadyReviewedKeys.includes(key);
                 if (isKeyAlreadyReviewed) continue;
 
-                let name: string = key;
-                if (groupedTasks[key] && groupedTasks[key].length && groupedTasks[key][0].parent && key.indexOf(groupedTasks[key][0].parent) !== -1) {
-                    name = key.substr(groupedTasks[key][0].parent.length + 1, key.length);
-                }
+                // Skip child task keys — they are added through the inner children loop
+                // to guarantee parent-first order regardless of sorting direction.
+                // Note: children of collapsed parents are already filtered out by visibility
+                // before getGroupTasks is called, so they won't be lost here.
+                if (groupedTasks[key]?.[0]?.parent) continue;
+
+                const name: string = key;
 
                 // add current task
                 const taskRecord: GroupedTask = {
@@ -2143,8 +2171,8 @@ export class Gantt implements IVisual {
                 result.push(taskRecord);
                 alreadyReviewedKeys.push(key);
 
-                // see all the children and add them
-
+                // Add children in the order defined by task.children
+                // (set by sortHierarchicalTasks or sortTasksForLayering)
                 for (const task of groupedTasks[key]) {
                     if (task.children && !collapsedTasks.includes(task.name)) {
                         for (const childrenTask of task.children) {
