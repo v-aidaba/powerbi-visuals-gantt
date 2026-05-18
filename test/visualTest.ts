@@ -1000,6 +1000,37 @@ describe("Gantt", () => {
         });
 
         it("Axis renders with correct date range when all grouped tasks are collapsed", (done) => {
+            // Construct a dataset where EVERY task is a child of one of two synthesized parent
+            // rows. Synthesized parent rows have null start/end (they are not aggregated from
+            // children in Group Tasks = ON mode). When all parents are collapsed at the time
+            // of the FIRST render — the actual "switching pages with collapsed groups" scenario
+            // from the bug report — only null-dated parent rows survive into `groupedTasks`.
+            // Before the fix this caused min/max to be undefined, the axis was skipped, and
+            // the background <rect> stayed with the default SVG black fill (the visible
+            // "black border" symptom). A re-render-after-collapse test is not sufficient,
+            // because d3 transitions leave the previous axis in the DOM and the assertion
+            // would pass on the buggy code too.
+            defaultDataViewBuilder.valuesTaskTypeResource = [
+                ["Spec", "MOLAP connectivity", "Mey", "Frontend"],
+                ["Dev", "Front End dev", "Sheng", "Frontend"],
+                ["Dev", "Tech design", "John", "Frontend"],
+                ["Spec", "Query Pipeline", "Just", "Backend"],
+                ["Spec", "Gateway", "Darshan", "Backend"],
+                ["Dev", "Connection", "Gentiana", "Backend"]
+            ];
+            defaultDataViewBuilder.valuesStartDate = VisualData.getRandomUniqueDates(
+                defaultDataViewBuilder.valuesTaskTypeResource.length,
+                new Date(2015, 7, 0), new Date(2017, 7, 0));
+            defaultDataViewBuilder.valuesDuration = VisualData.getRandomUniqueNumbers(
+                defaultDataViewBuilder.valuesTaskTypeResource.length, 3, 40);
+            defaultDataViewBuilder.valuesCompletePrecntege = VisualData.getRandomUniqueNumbers(
+                defaultDataViewBuilder.valuesTaskTypeResource.length);
+            defaultDataViewBuilder.valuesExtraInformation = VisualData.getTexts(
+                defaultDataViewBuilder.valuesTaskTypeResource, "Description");
+            defaultDataViewBuilder.valuesExtraInformationDates = VisualData.getRandomUniqueDates(
+                defaultDataViewBuilder.valuesTaskTypeResource.length,
+                new Date(2015, 7, 0), new Date(2017, 7, 0));
+
             dataView = defaultDataViewBuilder.getDataView([
                 VisualData.ColumnType,
                 VisualData.ColumnTask,
@@ -1009,45 +1040,43 @@ describe("Gantt", () => {
                 VisualData.ColumnParent
             ]);
 
-            dataView.metadata.objects = { general: { groupTasks: true } };
+            // Persist both parents as collapsed BEFORE the first render — simulates the
+            // page-switch scenario where the visual mounts with an already-collapsed state.
+            dataView.metadata.objects = {
+                general: { groupTasks: true },
+                collapsedTasks: {
+                    list: JSON.stringify(["Frontend", "Backend"])
+                }
+            };
             fixDataViewDateValuesAggregation(dataView);
 
             visualBuilder.updateRenderTimeout(dataView, () => {
-                let tasks: Task[] = d3Select(visualBuilder.element).selectAll(".task").data() as Task[];
-                let parentTasks: Task[] = tasks.filter((task: Task) => task.children);
+                // Only the two synthesized parent rows are visible
+                const renderedTasks = d3Select(visualBuilder.element).selectAll(".task").data() as Task[];
+                expect(renderedTasks.length).toBe(2);
+                expect(renderedTasks.every(t => t.start == null && t.end == null)).toBeTrue();
 
-                // Collapse all parent tasks
-                for (const parentTask of parentTasks) {
-                    const parentTaskLabel = visualBuilder.taskLabelsText[parentTask.index];
-                    clickElement(parentTaskLabel.parentElement);
-                }
+                // Axis renders with tick marks (was missing before the fix because min/max
+                // were undefined and `hasNotNullableDates` was false → `renderAxis` skipped)
+                const axisTicks = visualBuilder.axisTicks;
+                expect(axisTicks.length).toBeGreaterThan(0);
 
-                let collapsedTasksList = visualBuilder.instance["collapsedTasks"];
-                dataView.metadata.objects = {
-                    collapsedTasks: {
-                        list: JSON.stringify(collapsedTasksList)
-                    },
-                    general: { groupTasks: true }
-                };
+                const axisTicksText = visualBuilder.axisTicksText;
+                expect(axisTicksText.length).toBeGreaterThan(0);
+                expect(axisTicksText[0].textContent).not.toBe("");
 
-                visualBuilder.updateRenderTimeout(dataView, () => {
-                    const axisTicks = visualBuilder.axisTicks;
-                    expect(axisTicks.length).toBeGreaterThan(0);
+                // Axis background rect is not painted black. We check the effective style —
+                // style("fill", …) wins over attr("fill", …), so testing the attribute alone
+                // would silently pass once the PR adds `attr("fill", "none")` at creation.
+                const axisBackgroundRect = visualBuilder.axisBackgroundRect;
+                expect(axisBackgroundRect).not.toBeNull();
+                const effectiveFill = (axisBackgroundRect as SVGRectElement).style.fill
+                    || (axisBackgroundRect as SVGRectElement).getAttribute("fill");
+                expect(effectiveFill).not.toBe("#000000");
+                expect(effectiveFill).not.toBe("black");
+                expect(effectiveFill).not.toBe("rgb(0, 0, 0)");
 
-                    const axisTicksText = visualBuilder.axisTicksText;
-                    expect(axisTicksText.length).toBeGreaterThan(0);
-                    expect(axisTicksText[0].textContent).not.toBe("");
-
-                    // Verify no black border / background by checking axis background rect
-                    const axisBackgroundRect = visualBuilder.axisBackgroundRect;
-                    if (axisBackgroundRect) {
-                        const fill = axisBackgroundRect.getAttribute("fill");
-                        expect(fill).not.toBe("#000000");
-                        expect(fill).not.toBe("black");
-                    }
-
-                    done();
-                });
+                done();
             });
         });
 
