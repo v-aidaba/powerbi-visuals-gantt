@@ -999,6 +999,58 @@ describe("Gantt", () => {
             });
         });
 
+        it("Axis renders with correct date range when all grouped tasks are collapsed", (done) => {
+            dataView = defaultDataViewBuilder.getDataView([
+                VisualData.ColumnType,
+                VisualData.ColumnTask,
+                VisualData.ColumnStartDate,
+                VisualData.ColumnDuration,
+                VisualData.ColumnResource,
+                VisualData.ColumnParent
+            ]);
+
+            dataView.metadata.objects = { general: { groupTasks: true } };
+            fixDataViewDateValuesAggregation(dataView);
+
+            visualBuilder.updateRenderTimeout(dataView, () => {
+                let tasks: Task[] = d3Select(visualBuilder.element).selectAll(".task").data() as Task[];
+                let parentTasks: Task[] = tasks.filter((task: Task) => task.children);
+
+                // Collapse all parent tasks
+                for (const parentTask of parentTasks) {
+                    const parentTaskLabel = visualBuilder.taskLabelsText[parentTask.index];
+                    clickElement(parentTaskLabel.parentElement);
+                }
+
+                let collapsedTasksList = visualBuilder.instance["collapsedTasks"];
+                dataView.metadata.objects = {
+                    collapsedTasks: {
+                        list: JSON.stringify(collapsedTasksList)
+                    },
+                    general: { groupTasks: true }
+                };
+
+                visualBuilder.updateRenderTimeout(dataView, () => {
+                    const axisTicks = visualBuilder.axisTicks;
+                    expect(axisTicks.length).toBeGreaterThan(0);
+
+                    const axisTicksText = visualBuilder.axisTicksText;
+                    expect(axisTicksText.length).toBeGreaterThan(0);
+                    expect(axisTicksText[0].textContent).not.toBe("");
+
+                    // Verify no black border / background by checking axis background rect
+                    const axisBackgroundRect = visualBuilder.axisBackgroundRect;
+                    if (axisBackgroundRect) {
+                        const fill = axisBackgroundRect.getAttribute("fill");
+                        expect(fill).not.toBe("#000000");
+                        expect(fill).not.toBe("black");
+                    }
+
+                    done();
+                });
+            });
+        });
+
         it("Milestone test", (done) => {
             dataView = defaultDataViewBuilder.getDataView([
                 VisualData.ColumnType,
