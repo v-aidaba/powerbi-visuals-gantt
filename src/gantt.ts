@@ -207,7 +207,7 @@ interface CreateTaskDto {
     hasHighlights: boolean;
     categoricalValues: powerbi.DataViewValueColumns;
     color: string;
-    completion: number;
+    completion: number | null;
     categoryValue: PrimitiveValue;
     endDate: Date;
     duration: number;
@@ -312,6 +312,7 @@ export class Gantt implements IVisual {
     private static ChartLineHeightDivider: number = 4;
     private static ResourceWidthPadding: number = 10;
     private static TaskLabelsMarginTop: number = 15;
+    private static readonly NO_SELECTOR = null as unknown as powerbi.visuals.ISelectionId;
     public static CompletionDefault: number | null = null;
     private static CompletionMax: number = 1;
     public static CompletionMin: number = 0;
@@ -516,7 +517,7 @@ export class Gantt implements IVisual {
                     initialY: 0,
                 });
             })
-            .call((d3Drag<SVGRectElement, { initialX: number; initialY: number; }>()
+            .call(d3Drag<SVGRectElement, { initialX: number; initialY: number; }>()
                 .on("start", (event: D3DragEvent<SVGRectElement, { initialX: number; initialY: number; }, d3SubjectPosition>, datum: { initialX: number; initialY: number; }) => {
                     datum.initialX = event.x;
                 })
@@ -568,13 +569,13 @@ export class Gantt implements IVisual {
                     this.host.persistProperties({
                         merge: [{
                             objectName: "taskLabels",
-                            selector: null as unknown as powerbi.visuals.ISelectionId,
+                            selector: Gantt.NO_SELECTOR,
                             properties: {
                                 width: newWidth
                             }
                         }]
                     });
-                })) as any);
+                }) as any);
     }
 
     /**
@@ -757,8 +758,7 @@ export class Gantt implements IVisual {
             tooltipDataArray.push(...task.tooltipInfo);
         }
 
-        task.extraInformation?.
-            map(tooltip => {
+        task.extraInformation?.map(tooltip => {
                 if (typeof tooltip.value === "string") {
                     return tooltip;
                 }
@@ -1275,7 +1275,7 @@ export class Gantt implements IVisual {
         duration: number,
         durationUnit: DurationUnit) {
         let color: string = taskColor;
-        let completion: number = 0;
+        let completion: number | null = null;
         let taskType: LegendGroup | null = null;
         let wasDowngradeDurationUnit: boolean = false;
         let stepDurationTransformation: number = 0;
@@ -1311,7 +1311,7 @@ export class Gantt implements IVisual {
 
                     completion = ((group.Completion && group.Completion.values[index])
                         && taskProgressShow
-                        && Gantt.convertToDecimal(group.Completion.values[index] as number, this.formattingSettings.taskCompletion.maxCompletion.value, maxCompletionFromTasks)) || 0;
+                        && Gantt.convertToDecimal(group.Completion.values[index] as number, this.formattingSettings.taskCompletion.maxCompletion.value, maxCompletionFromTasks)) || null;
 
                     if (completion !== null) {
                         if (completion < Gantt.CompletionMin) {
@@ -1340,7 +1340,7 @@ export class Gantt implements IVisual {
 
                     completion = ((group.Completion && group.Completion.values[index])
                         && taskProgressShow
-                        && Gantt.convertToDecimal(group.Completion.values[index] as number, this.formattingSettings.taskCompletion.maxCompletion.value, maxCompletionFromTasks)) || 0;
+                        && Gantt.convertToDecimal(group.Completion.values[index] as number, this.formattingSettings.taskCompletion.maxCompletion.value, maxCompletionFromTasks)) || null;
 
                     if (completion !== null) {
                         if (completion < Gantt.CompletionMin) {
@@ -1934,7 +1934,7 @@ export class Gantt implements IVisual {
         const persistSettingsWasEmpty: boolean = this.settingsService.state.hasNoPersistedSettings;
 
         this.sortingOptions = Gantt.getSortingOptions(options.dataViews[0]);
-        const viewModel = this.converter(options.dataViews[0], this.sortingOptions, options.viewMode ?? 0 as unknown as powerbi.ViewMode);
+        const viewModel = this.converter(options.dataViews[0], this.sortingOptions, options.viewMode ?? powerbi.ViewMode.View);
         if (!viewModel) {
             return;
         }
@@ -2336,9 +2336,9 @@ export class Gantt implements IVisual {
 
     private calculateTaskLayers(groupedTasks: GroupedTask[]): void {
         groupedTasks.forEach(groupedTask => {
+            groupedTask.tasks.forEach(task => task.layer = 0);
             const tasks = groupedTask.tasks.filter(t => t.start && t.end);
             if (tasks.length <= 1) {
-                groupedTask.tasks.forEach(task => task.layer = 0);
                 return;
             }
 
@@ -2985,13 +2985,13 @@ export class Gantt implements IVisual {
         this.host.persistProperties({
             merge: [{
                 objectName: "collapsedTasks",
-                selector: null as unknown as powerbi.visuals.ISelectionId,
+                selector: Gantt.NO_SELECTOR,
                 properties: {
                     list: JSON.stringify(collapsedValues)
                 }
             }, {
                 objectName: "collapsedTasksUpdateId",
-                selector: null as unknown as powerbi.visuals.ISelectionId,
+                selector: Gantt.NO_SELECTOR,
                 properties: {
                     value: JSON.stringify(collapsedTasksUpdateId)
                 }
@@ -3761,7 +3761,8 @@ export class Gantt implements IVisual {
                     durationUnit = DurationHelper.downgradeDurationUnit(durationUnit, task.duration);
                 }
                 const startTime: number = task.start ? task.start.getTime() : 0;
-                const progressLength: number = (task.end ? task.end.getTime() : 0 - startTime) * task.completion;
+                const endTime: number = task.end ? task.end.getTime() : 0;
+                const progressLength: number = (endTime - startTime) * (task.completion ?? 0);
                 const currentProgressTime: number = new Date(startTime + progressLength).getTime();
 
                 const daysOffFiltered: DayOffData[] = task.daysOffList
@@ -3899,7 +3900,7 @@ export class Gantt implements IVisual {
 
         const line: Line[] = [];
         milestoneDates.forEach((date: Date) => {
-            const title: string = date === (Gantt.TimeScale(timestamp) as unknown) ? (milestoneTitle || "Milestone") : "Milestone";
+            const title: string = date.getTime() === timestamp ? (milestoneTitle || "Milestone") : "Milestone";
             const lineOptions = {
                 x1: Gantt.TimeScale(date),
                 y1: Gantt.MilestoneTop,

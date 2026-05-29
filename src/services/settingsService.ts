@@ -27,6 +27,8 @@
 import powerbi from "powerbi-visuals-api";
 import { SettingsState } from "./settingsState";
 
+const NO_SELECTOR = null as unknown as powerbi.visuals.ISelectionId;
+
 export class SettingsService {
     private hostServices: powerbi.extensibility.visual.IVisualHost;
     public state: SettingsState;
@@ -42,7 +44,7 @@ export class SettingsService {
             properties: {
                 persistSettings: JSON.stringify(this.state.save())
             },
-            selector: null as unknown as powerbi.visuals.ISelectionId
+            selector: NO_SELECTOR
         }];
 
         this.sendInstancesToHost(instances);

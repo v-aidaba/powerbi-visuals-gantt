@@ -62,11 +62,11 @@ export function getRandomInteger(min: number, max: number, exceptionList?: numbe
 }
 
 export function isValidDate(date: Date | null | undefined): boolean {
-    if (Object.prototype.toString.call(date) !== "[object Date]") {
+    if (!(date instanceof Date)) {
         return false;
     }
 
-    return !isNaN(date!.getTime());
+    return !isNaN(date.getTime());
 }
 
 export function isStringNotNullEmptyOrUndefined(str: string | null | undefined) {
