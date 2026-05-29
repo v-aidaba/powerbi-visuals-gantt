@@ -72,9 +72,9 @@ export class BackgroundCardSettings extends CompositeCard implements ISetHighCon
     public setHighContrastMode(colorHelper: ColorHelper): void {
         const isHighContrast = colorHelper.isHighContrast;
 
-        this.groups.forEach((group: BaseBackroundSettings) => {
-            group.color.value.value = colorHelper.getHighContrastColor("background", group.color.value.value);
-            group.color.visible = !isHighContrast;
+        this.groups.forEach((group) => {
+            (group as BaseBackroundSettings).color.value.value = colorHelper.getHighContrastColor("background", (group as BaseBackroundSettings).color.value.value);
+            (group as BaseBackroundSettings).color.visible = !isHighContrast;
         });
     }
 }

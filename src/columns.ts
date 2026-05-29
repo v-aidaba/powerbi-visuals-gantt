@@ -46,28 +46,28 @@ const extraInformationRole = GanttRole.ExtraInformation;
 
 export class GanttColumns<T> {
 
-    public static getGroupedValueColumns(dataView: DataView): GanttColumns<DataViewValueColumn>[] {
-        const categorical: DataViewCategorical = dataView?.categorical;
-        const values: DataViewValueColumns = categorical?.values;
-        const grouped: DataViewValueColumnGroup[] = values?.length && values.grouped();
+    public static getGroupedValueColumns(dataView: DataView): GanttColumns<DataViewValueColumn>[] | undefined {
+        const categorical: DataViewCategorical | undefined = dataView?.categorical;
+        const values: DataViewValueColumns | undefined = categorical?.values;
+        const grouped: DataViewValueColumnGroup[] | undefined = values?.length ? values.grouped() : undefined;
 
         if (values === undefined || values.length == 0) {
-            return;
+            return undefined;
         }
 
         return grouped && grouped.map(g => lodashMapValues(
             new this<DataViewValueColumn>(),
-            (n, i) => g.values.filter(v => v.source.roles[i])[0]));
+            (n: DataViewValueColumn | null, i: string) => g.values.filter(v => v.source.roles && v.source.roles[i])[0]));
     }
 
-    public static getCategoricalValues(dataView: DataView): GanttColumns<any> {
-        const categorical: DataViewCategorical = dataView && dataView.categorical;
+    public static getCategoricalValues(dataView: DataView): GanttColumns<any> | null {
+        const categorical: DataViewCategorical | undefined = dataView && dataView.categorical;
         const categories: DataViewCategoricalColumn[] = categorical && categorical.categories || [];
-        const values: DataViewValueColumns = categorical && categorical.values || <DataViewValueColumns>[];
-        const series: PrimitiveValue[] = categorical && values.source && this.getSeriesValues(dataView);
+        const values: DataViewValueColumns = categorical && categorical.values || [] as unknown as DataViewValueColumns;
+        const series: PrimitiveValue[] | undefined = categorical && values.source && this.getSeriesValues(dataView);
 
-        return categorical && lodashMapValues(new this<any[]>(), (n, i) => {
-            let columns: PrimitiveValue[] | { [x: string]: PrimitiveValue[]; };
+        return (categorical && lodashMapValues(new this<any[]>(), (n: any, i: string) => {
+            let columns: PrimitiveValue[] | { [x: string]: PrimitiveValue[]; } | undefined;
             (<DataViewValueColumn[]>lodashToArray(categories))
                 .concat(lodashToArray(values))
                 .filter(x => x.source.roles && x.source.roles[i])
@@ -79,9 +79,9 @@ export class GanttColumns<T> {
 
                         if (x.source.format) {
                             const formatter = ValueFormatter.create({ format: x.source.format });
-                            columns[x.source.displayName] = x.values.map(v => formatter.format(v));
+                            (columns as { [x: string]: PrimitiveValue[] })[x.source.displayName] = x.values.map(v => formatter.format(v));
                         } else {
-                            columns[x.source.displayName] = x.values;
+                            (columns as { [x: string]: PrimitiveValue[] })[x.source.displayName] = x.values;
                         }
                     } else {
                         columns = x.values;
@@ -89,23 +89,23 @@ export class GanttColumns<T> {
                 });
 
             return columns || values.source && values.source.roles && values.source.roles[i] && series;
-        });
+        })) || null;
     }
 
-    public static getSeriesValues(dataView: DataView): PrimitiveValue[] {
+    public static getSeriesValues(dataView: DataView): PrimitiveValue[] | undefined {
         return dataView && dataView.categorical && dataView.categorical.values
             && dataView.categorical.values.map(x => converterHelper.getSeriesName(x.source));
     }
 
     // Data Roles
-    public Legend: T = null;
-    public Task: T = null;
-    public Parent: T = null;
-    public StartDate: T = null;
-    public EndDate: T = null;
-    public Duration: T = null;
-    public Completion: T = null;
-    public Resource: T = null;
-    public ExtraInformation: T = null;
-    public Milestones: T = null;
+    public Legend: T | null = null;
+    public Task: T | null = null;
+    public Parent: T | null = null;
+    public StartDate: T | null = null;
+    public EndDate: T | null = null;
+    public Duration: T | null = null;
+    public Completion: T | null = null;
+    public Resource: T | null = null;
+    public ExtraInformation: T | null = null;
+    public Milestones: T | null = null;
 }

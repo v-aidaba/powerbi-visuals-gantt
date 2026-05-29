@@ -19,7 +19,7 @@ export class TaskCompletionCardSettings extends Card {
     public maxCompletion = new NumUpDown({
         name: "maxCompletion",
         displayNameKey: "Visual_MaxCompletion",
-        value: Gantt.CompletionDefault, 
+        value: Gantt.CompletionDefault ?? 0, 
         options: {
             minValue: {
                 type: ValidatorType.Min,
@@ -39,7 +39,7 @@ export class TaskCompletionCardSettings extends Card {
 
     public parse(){
         if (this.maxCompletion.value < Gantt.CompletionMin || this.maxCompletion.value > Gantt.CompletionMaxInPercent) {
-            this.maxCompletion.value = Gantt.CompletionDefault;
+            this.maxCompletion.value = Gantt.CompletionDefault ?? 0;
         }
     }
 }

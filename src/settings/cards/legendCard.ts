@@ -101,7 +101,7 @@ export class LegendCardSettings extends CompositeCard implements ISetHighContras
         this.groups = [this.general, legendColorsGroup];
 
         for (const dataPoint of dataPoints) {
-            legendColorsGroup.slices.push(new ColorPicker({
+            legendColorsGroup.slices!.push(new ColorPicker({
                 name: "fill",
                 displayName: dataPoint.label || localizationManager.getDisplayName("Visual_LegendColor"),
                 selector: ColorHelper.normalizeSelector(dataPoint.identity.getSelector(), false),
@@ -114,7 +114,7 @@ export class LegendCardSettings extends CompositeCard implements ISetHighContras
         const isHighContrast = colorHelper.isHighContrast;
 
         this.groups.forEach((group) => {
-            group.slices.forEach((slice) => {
+            group.slices?.forEach((slice) => {
                 if (slice instanceof ColorPicker) {
                     slice.value.value = colorHelper.getHighContrastColor("foreground", slice.value.value);
                     slice.visible = !isHighContrast;

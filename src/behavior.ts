@@ -86,13 +86,13 @@ export interface BehaviorOptions {
 
 export class Behavior {
     private selectionManager: ISelectionManager;
-    private options: BehaviorOptions;
+    private options: BehaviorOptions | null = null;
 
     constructor(selectionManager: ISelectionManager) {
         this.selectionManager = selectionManager;
-        this.selectionManager.registerOnSelectCallback((selectionIds?: ISelectionId[]) => {
+        this.selectionManager.registerOnSelectCallback(((selectionIds: ISelectionId[]) => {
             this.onSelectCallback(selectionIds);
-        });
+        }) as unknown as (ids: powerbi.extensibility.ISelectionId[]) => void);
     }
 
     public get isInitialized(): boolean {
@@ -114,35 +114,38 @@ export class Behavior {
     }
 
     private handleClickEvents(): void {
-        this.options.taskSelection.on("click", (event: MouseEvent, dataPoint: Task) => {
+        if (!this.options) return;
+        const options = this.options;
+        options.taskSelection.on("click", (event: MouseEvent, dataPoint: Task) => {
             event.stopPropagation();
             this.selectDataPoint(dataPoint, event.ctrlKey || event.metaKey || event.shiftKey);
         });
 
-        this.options.legendSelection.on("click", (event: MouseEvent, dataPoint: LegendDataPoint) => {
+        options.legendSelection.on("click", (event: MouseEvent, dataPoint: LegendDataPoint) => {
             event.stopPropagation();
             this.selectDataPoint(dataPoint, event.ctrlKey || event.metaKey || event.shiftKey);
         });
 
-        this.options.subTasksCollapse.selection.on("click", (event: MouseEvent, dataPoint: GroupedTask) => {
+        options.subTasksCollapse.selection.on("click", (event: MouseEvent, dataPoint: GroupedTask) => {
             if (!dataPoint.tasks.map(task => task.children).flat().length) {
                 return;
             }
             event.stopPropagation();
-            this.options.subTasksCollapse.callback(dataPoint);
+            options.subTasksCollapse.callback(dataPoint);
         });
 
-        this.options.allSubTasksCollapse.selection.on("click", (event: MouseEvent) => {
+        options.allSubTasksCollapse.selection.on("click", (event: MouseEvent) => {
             event.stopPropagation();
-            this.options.allSubTasksCollapse.callback();
+            options.allSubTasksCollapse.callback();
         });
 
-        this.options.clearCatcher.on("click", () => {
+        options.clearCatcher.on("click", () => {
             this.clear();
         });
     }
 
     private handleContextMenuEvents(): void {
+        if (!this.options) return;
         this.options.taskSelection.on("contextmenu", (event: MouseEvent, dataPoint: Task) => {
             event.preventDefault();
             event.stopPropagation();
@@ -164,7 +167,7 @@ export class Behavior {
         this.options.clearCatcher.on("contextmenu", (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
-            this.selectionManager.showContextMenu(null, {
+            this.selectionManager.showContextMenu({}, {
                 x: event.clientX,
                 y: event.clientY,
             });
@@ -172,14 +175,16 @@ export class Behavior {
     }
 
     private handleKeyboardEvents(): void {
-        this.options.taskSelection.on("keydown", (event: KeyboardEvent, dataPoint: Task) => {
+        if (!this.options) return;
+        const options = this.options;
+        options.taskSelection.on("keydown", (event: KeyboardEvent, dataPoint: Task) => {
             if (event.code === "Enter" || event.code === "Space") {
                 event.preventDefault();
                 this.selectDataPoint(dataPoint, event.ctrlKey || event.metaKey || event.shiftKey);
             }
         });
 
-        this.options.subTasksCollapse.selection.on("keydown", (event: KeyboardEvent, dataPoint: GroupedTask) => {
+        options.subTasksCollapse.selection.on("keydown", (event: KeyboardEvent, dataPoint: GroupedTask) => {
             if (event.code === "Enter" || event.code === "Space") {
                 event.stopPropagation();
                 event.preventDefault();
@@ -187,26 +192,27 @@ export class Behavior {
                 if (!dataPoint.tasks.map(task => task.children).flat().length) {
                     return;
                 }
-                this.options.subTasksCollapse.callback(dataPoint);
+                options.subTasksCollapse.callback(dataPoint);
             }
         });
 
-        this.options.allSubTasksCollapse.arrowSelection.on("keydown", (event: KeyboardEvent) => {
+        options.allSubTasksCollapse.arrowSelection.on("keydown", (event: KeyboardEvent) => {
             if (event.code === "Enter" || event.code === "Space") {
                 event.stopPropagation();
                 event.preventDefault();
-                this.options.allSubTasksCollapse.callback();
+                options.allSubTasksCollapse.callback();
             }
         });
     }
 
     public renderSelection(hasHighlights?: boolean): void {
+        if (!this.options) return;
         const hasSelection = this.hasSelection;
-        const hasHighlightsValue = hasHighlights || this.options.hasHighlights;
+        const hasHighlightsValue = hasHighlights ?? this.options.hasHighlights ?? false;
 
         this.options.taskSelection.style("opacity", (dataPoint: Task) => getFillOpacity(
             dataPoint.selected,
-            dataPoint.highlight,
+            dataPoint.highlight ?? false,
             hasSelection,
             hasHighlightsValue,
         ));
@@ -232,6 +238,7 @@ export class Behavior {
     }
 
     private applySelectionStateToDataPoints(selectionIds?: ISelectionId[]): void {
+        if (!this.options) return;
         const selectedIds: ISelectionId[] = selectionIds || <ISelectionId[]>this.selectionManager.getSelectionIds();
         this.setSelectedToDataPoints(this.options.dataPoints, selectedIds);
         this.setSelectedToDataPoints(this.options.legendDataPoints, selectedIds);

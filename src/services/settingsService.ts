@@ -42,7 +42,7 @@ export class SettingsService {
             properties: {
                 persistSettings: JSON.stringify(this.state.save())
             },
-            selector: null
+            selector: null as unknown as powerbi.visuals.ISelectionId
         }];
 
         this.sendInstancesToHost(instances);
