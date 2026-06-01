@@ -149,7 +149,7 @@ export class Behavior {
         this.options.taskSelection.on("contextmenu", (event: MouseEvent, dataPoint: Task) => {
             event.preventDefault();
             event.stopPropagation();
-            this.selectionManager.showContextMenu(dataPoint ? dataPoint.identity : {}, {
+            this.selectionManager.showContextMenu(dataPoint ? dataPoint.identity : null as any, {
                 x: event.clientX,
                 y: event.clientY,
             });
@@ -158,7 +158,7 @@ export class Behavior {
         this.options.legendSelection.on("contextmenu", (event: MouseEvent, dataPoint: LegendDataPoint) => {
             event.preventDefault();
             event.stopPropagation();
-            this.selectionManager.showContextMenu(dataPoint ? dataPoint.identity : {}, {
+            this.selectionManager.showContextMenu(dataPoint ? dataPoint.identity : null as any, {
                 x: event.clientX,
                 y: event.clientY,
             });
@@ -167,7 +167,7 @@ export class Behavior {
         this.options.clearCatcher.on("contextmenu", (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
-            this.selectionManager.showContextMenu({}, {
+            this.selectionManager.showContextMenu(null as any, {
                 x: event.clientX,
                 y: event.clientY,
             });

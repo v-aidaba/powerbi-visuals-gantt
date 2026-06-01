@@ -3662,10 +3662,11 @@ export class Gantt implements IVisual {
             .each(function (x: Task, i: number) {
                 if (index !== i &&
                     x.index === task.index &&
-                    (x.start ?? new Date(0)) >= (task.start ?? new Date(0)) &&
-                    (!sameRowNextTaskStart || sameRowNextTaskStart < (x.start ?? new Date(0)))) {
+                    x.start && task.start &&
+                    x.start >= task.start &&
+                    (!sameRowNextTaskStart || sameRowNextTaskStart < x.start)) {
 
-                    sameRowNextTaskStart = x.start ?? new Date(0);
+                    sameRowNextTaskStart = x.start;
                 }
             });
 
