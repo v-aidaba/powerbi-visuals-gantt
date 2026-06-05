@@ -36,7 +36,7 @@ import {
     timeSecond as d3TimeSecond
 } from "d3-time";
 import { nest as d3Nest } from "d3-collection";
-import { drag as d3Drag, D3DragEvent, SubjectPosition as d3SubjectPosition } from "d3-drag";
+import { drag as d3Drag, DragBehavior, D3DragEvent, SubjectPosition as d3SubjectPosition } from "d3-drag";
 
 
 //lodash
@@ -575,7 +575,7 @@ export class Gantt implements IVisual {
                             }
                         }]
                     });
-                }) as any);
+                }) as DragBehavior<SVGRectElement, null, d3SubjectPosition>);
     }
 
     /**
