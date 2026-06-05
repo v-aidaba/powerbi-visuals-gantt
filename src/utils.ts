@@ -1,5 +1,8 @@
 import { getRandomNumber } from "powerbi-visuals-utils-testutils";
 import lodashRange from "lodash.range";
+import powerbi from "powerbi-visuals-api";
+export const NO_SELECTOR: powerbi.visuals.ISelectionId = null as unknown as powerbi.visuals.ISelectionId;
+
 
 export const drawRoundedRectByPath = (x: number, y: number, width: number, height: number, radius: number) => {
     if (!width || !height) {
