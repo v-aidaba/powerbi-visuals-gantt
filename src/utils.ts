@@ -61,21 +61,21 @@ export function getRandomInteger(min: number, max: number, exceptionList?: numbe
     return getRandomNumber(max, min, exceptionList, Math.floor);
 }
 
-export function isValidDate(date: Date): boolean {
-    if (Object.prototype.toString.call(date) !== "[object Date]") {
+export function isValidDate(date: Date | null | undefined): boolean {
+    if (!(date instanceof Date)) {
         return false;
     }
 
     return !isNaN(date.getTime());
 }
 
-export function isStringNotNullEmptyOrUndefined(str: string) {
+export function isStringNotNullEmptyOrUndefined(str: string | null | undefined) {
     const isReducableType: boolean = typeof str === "string" || typeof str === "number" || typeof str === "boolean";
     return str && isReducableType;
 }
 
-export function hashCode(s) {
-    let h: number;
+export function hashCode(s: string) {
+    let h: number = 0;
     for (let i = 0; i < s.length; i++) {
         h = Math.imul(31, h) + s.charCodeAt(i) | 0;
     }

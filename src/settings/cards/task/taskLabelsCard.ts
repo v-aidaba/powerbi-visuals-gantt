@@ -131,16 +131,16 @@ export class TaskLabelSettings extends Card {
     });
 
     public setHighContrastMode(colorHelper: ColorHelper): void {
-        this.container.containerItems.forEach((item: BaseLabelsItem) => {
-            item.fill.value.value = colorHelper.getHighContrastColor("foreground", item.fill.value.value);
-            item.fill.visible = !colorHelper.isHighContrast;
+        this.container!.containerItems.forEach((item) => {
+            (item as BaseLabelsItem).fill.value.value = colorHelper.getHighContrastColor("foreground", (item as BaseLabelsItem).fill.value.value);
+            (item as BaseLabelsItem).fill.visible = !colorHelper.isHighContrast;
         });
     }
 
     public onPreProcess(): void {
-        this.container.containerItems?.forEach((item: BaseLabelsItem) => {
-            if (item.onPreProcess) {
-                item.onPreProcess();
+        this.container!.containerItems?.forEach((item) => {
+            if ((item as any).onPreProcess) {
+                (item as any).onPreProcess();
             }
         });
     }

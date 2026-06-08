@@ -3,15 +3,18 @@
     "allowJs": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "module": "es6",
+    "module": "esnext",
     "target": "ES6",
+    "lib": ["ES2020", "DOM"],
     "sourceMap": true,
     "outDir": "./.tmp/build/",
-    "moduleResolution": "node",
+    "rootDir": ".",
+    "moduleResolution": "bundler",
     "declaration": true,
     "allowSyntheticDefaultImports": true
   },
   "files": [
-    "src/gantt.ts"
+    "src/gantt.ts",
+    "src/typings.d.ts"
   ]
 }

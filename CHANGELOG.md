@@ -1,3 +1,7 @@
+## 3.4.9.0
+### Code improvements
+* Improved type safety: nullable fields in domain interfaces, null-guards in handlers, and several real bugs fixed along the way (operator-precedence in `progressLength`, `layer` initialization for date-less tasks, `Date`/`number` comparison in milestone titles, `CompletionDefault` semantics).
+
 ## 3.4.8.0
 ### Bug fixes
 * Extra milestone marker no longer appears on expanded parent (summary) rows.

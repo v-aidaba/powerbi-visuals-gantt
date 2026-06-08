@@ -185,5 +185,6 @@ export class DurationHelper {
                 ? label
                 : `${duration} ${localizationManager.getDisplayName("Visual_DurationUnit_Seconds")} `;
         }
+        return label;
     }
 }

@@ -80,7 +80,7 @@ export class DateTypeCardSettings extends CompositeCard implements ISetHighContr
     public setHighContrastMode(colorHelper: ColorHelper): void {
         const isHighContrast = colorHelper.isHighContrast;
 
-        this.dateTypeGeneralGroup.slices.forEach(slice => {
+        this.dateTypeGeneralGroup.slices?.forEach(slice => {
             if (slice instanceof ColorPicker) {
                 slice.value.value = colorHelper.getHighContrastColor("foreground", slice.value.value);
                 slice.visible = !isHighContrast;

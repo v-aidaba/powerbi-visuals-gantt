@@ -64,21 +64,21 @@ export interface ExtraInformation {
 export interface Task extends SelectableDataPoint {
     index: number;
     name: string;
-    start: Date;
-    duration: number;
-    completion: number;
-    resource: string;
-    end: Date;
-    parent: string;
-    children: Task[];
+    start: Date | null;
+    duration: number | null;
+    completion: number | null;
+    resource: string | null;
+    end: Date | null;
+    parent: string | null;
+    children: Task[] | null;
     visibility: boolean;
-    taskType: string;
-    description: string;
-    color: string;
-    tooltipInfo: VisualTooltipDataItem[];
-    extraInformation: ExtraInformation[];
-    daysOffList: DayOffData[];
-    wasDowngradeDurationUnit: boolean;
+    taskType: string | null;
+    description: string | null;
+    color: string | null;
+    tooltipInfo: VisualTooltipDataItem[] | null;
+    extraInformation: ExtraInformation[] | null;
+    daysOffList: DayOffData[] | null;
+    wasDowngradeDurationUnit: boolean | null;
     stepDurationTransformation?: number;
     highlight?: boolean;
     Milestones?: Milestone[];
@@ -162,7 +162,7 @@ export interface Milestone {
     type: string;
     category?: string;
     start: Date;
-    tooltipInfo: VisualTooltipDataItem[];
+    tooltipInfo: VisualTooltipDataItem[] | null;
 }
 
 export interface MilestonePath extends Milestone {

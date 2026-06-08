@@ -7,6 +7,7 @@
         "target": "es6",
         "sourceMap": true,
         "outDir": "./.tmp/build/",
+        "rootDir": ".",
         "sourceRoot": "../../src/",
         "moduleResolution": "node",
         "declaration": true,

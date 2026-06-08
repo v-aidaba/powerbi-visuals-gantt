@@ -55,7 +55,7 @@ export class MilestoneContainerItem extends Card {
             name: "shapeType",
             displayNameKey: localizationManager.getDisplayName("Visual_Shape"),
             items: shapesOptions,
-            value: shapesOptions.find(el => el.value === milestone.shapeType),
+            value: shapesOptions.find(el => el.value === milestone.shapeType) || shapesOptions[0],
             selector: ColorHelper.normalizeSelector(milestone.identity.getSelector(), false),
         });
 
@@ -141,7 +141,7 @@ export class MilestonesCardSettings extends CompositeCard implements ISetHighCon
         this.lineGroup.lineColor.visible = !isHighContrast;
 
         this.milestoneGroup.container.containerItems.forEach((item) => {
-            item.slices.forEach((slice) => {
+            item.slices?.forEach((slice) => {
                 if (slice instanceof ColorPicker) {
                     slice.value.value = colorHelper.getHighContrastColor("foreground", slice.value.value);
                     slice.visible = !isHighContrast;
