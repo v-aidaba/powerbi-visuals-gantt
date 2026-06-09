@@ -28,8 +28,6 @@ import powerbi from "powerbi-visuals-api";
 import { SettingsState } from "./settingsState";
 import { NO_SELECTOR } from "../utils";
 
-const NO_SELECTOR = null as unknown as powerbi.visuals.ISelectionId;
-
 export class SettingsService {
     private hostServices: powerbi.extensibility.visual.IVisualHost;
     public state: SettingsState;

@@ -14,7 +14,9 @@
     "allowSyntheticDefaultImports": true,
     "strictNullChecks": true,
     "noImplicitAny": true,
-    "skipLibCheck": true
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "skipLibCheck": true // conflicts inside third-party declarations that we can't fix , but must be removed
   },
   "files": [
     "src/gantt.ts",

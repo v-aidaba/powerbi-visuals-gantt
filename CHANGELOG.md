@@ -2,6 +2,7 @@
 ### Code improvements
 * Improved type safety: nullable fields in domain interfaces, null-guards in handlers, and several real bugs fixed along the way (operator-precedence in `progressLength`, `layer` initialization for date-less tasks, `Date`/`number` comparison in milestone titles, `CompletionDefault` semantics).
 * Enabled `strictNullChecks` and `noImplicitAny` in `tsconfig.json`. Reworked the remaining `null as unknown as X` placeholder casts into proper `T | null` signatures (`endDate`, `valueAxisScaleType`, `sameRowNextTaskStart`, synthetic legend column values, task `index` placeholder), replaced `(LegendPosition as any)[…]`/`(DateType as any)[…]` with `EnumType[keyof typeof EnumType]` indexing, typed the drag-resize behavior and the `onPreProcess` container guard, and centralized the single sanctioned "no selector" cast in `NO_SELECTOR`.
+* Enabled `strictFunctionTypes` and `strictBindCallApply` in `tsconfig.json`. Removed the broad `as unknown as (...) => void` cast on `registerOnSelectCallback`: the callback now matches the API signature (`extensibility.ISelectionId[]`) with a single narrow, documented cast to the richer `visuals.ISelectionId[]` at the host boundary.
 
 ## 3.4.8.0
 ### Bug fixes

@@ -90,9 +90,9 @@ export class Behavior {
 
     constructor(selectionManager: ISelectionManager) {
         this.selectionManager = selectionManager;
-        this.selectionManager.registerOnSelectCallback(((selectionIds: ISelectionId[]) => {
-            this.onSelectCallback(selectionIds);
-        }) as unknown as (ids: powerbi.extensibility.ISelectionId[]) => void);
+        this.selectionManager.registerOnSelectCallback((ids: powerbi.extensibility.ISelectionId[]) => {
+            this.onSelectCallback(ids as ISelectionId[]);
+        });
     }
 
     public get isInitialized(): boolean {
