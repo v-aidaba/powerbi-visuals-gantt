@@ -361,7 +361,7 @@ export class Gantt implements IVisual {
     private taskGroup!: d3Selection<SVGGElement, null, null, undefined>;
     private lineGroup!: d3Selection<SVGGElement, null, null, undefined>;
     private lineGroupWrapper!: d3Selection<SVGRectElement, null, null, undefined>;
-    private lineGroupWrapperRightBorder!: d3Selection<SVGRectElement, { initialX: number; initialY: number; }, null, undefined>;
+    private lineGroupWrapperRightBorder!: d3Selection<SVGRectElement, { initialX: number; }, null, undefined>;
     private ganttDiv!: d3Selection<HTMLDivElement, null, null, undefined>;
     private behavior!: Behavior;
     private eventService!: IVisualEventService;
@@ -380,7 +380,14 @@ export class Gantt implements IVisual {
     private sortingOptions!: SortingOptions;
     private settingsService!: SettingsService;
 
-    constructor(options: VisualConstructorOptions) {
+    constructor(options: VisualConstructorOptions | undefined) {
+        // The tooling-generated visualPlugin.ts (powerbi-visuals-tools) calls the plugin's
+        // `create(options?)` with a possibly-undefined value, so the constructor signature must
+        // permit `undefined`. Validate it explicitly at this boundary: the host always supplies
+        // options at runtime, and a missing value is a genuine fatal error, not something to ignore.
+        if (!options) {
+            throw new Error("Gantt visual cannot be initialized without VisualConstructorOptions.");
+        }
         this.init(options);
     }
 
@@ -465,7 +472,7 @@ export class Gantt implements IVisual {
         // Used to make right border a little thicker and draggable
         this.lineGroupWrapperRightBorder = this.lineGroup
             .append("rect")
-            .datum<{ initialX: number; initialY: number; }>({ initialX: 0, initialY: 0 })
+            .datum<{ initialX: number; }>({ initialX: 0 })
             .classed(Gantt.TaskLinesRectRightLine.className, true)
             .attr("height", 0)
             .attr("width", 0)
@@ -509,24 +516,22 @@ export class Gantt implements IVisual {
     }
 
     private handleTaskLabelResize() {
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const self = this;
-        const dragBehavior = d3Drag<SVGRectElement, { initialX: number; initialY: number; }, d3SubjectPosition>()
-            .on("start", (event: D3DragEvent<SVGRectElement, { initialX: number; initialY: number; }, d3SubjectPosition>, datum: { initialX: number; initialY: number; }) => {
+        const dragBehavior = d3Drag<SVGRectElement, { initialX: number; }, d3SubjectPosition>()
+            .on("start", (event: D3DragEvent<SVGRectElement, { initialX: number; }, d3SubjectPosition>, datum: { initialX: number; }) => {
                 datum.initialX = event.x;
             })
-            .on("drag", function (event: D3DragEvent<SVGRectElement, { initialX: number; initialY: number; }, d3SubjectPosition>, datum: { initialX: number; initialY: number; }) {
+            .on("drag", (event: D3DragEvent<SVGRectElement, { initialX: number; }, d3SubjectPosition>, datum: { initialX: number; }) => {
                     const initialX = datum.initialX;
                     const dx = event.x - initialX;
-                    const currentWidth = self.formattingSettings.taskLabels.taskLabelsGroup.general.width.value;
+                    const currentWidth = this.formattingSettings.taskLabels.taskLabelsGroup.general.width.value;
                     const newWidth = Math.max(currentWidth + dx, TaskLabelsCardSettings.MinWidth);
 
-                    const ganttDiv = self.ganttDiv.node();
-                    const ganttSVG = self.ganttSvg.node();
+                    const ganttDiv = this.ganttDiv.node();
+                    const ganttSVG = this.ganttSvg.node();
 
                     if (!ganttDiv || !ganttSVG) return;
 
-                    self.lineGroupWrapper
+                    this.lineGroupWrapper
                         .attr("width", newWidth.toString())
                         .attr("height", (_, i, nodes) => {
                             const element = nodes[i];
@@ -535,27 +540,27 @@ export class Gantt implements IVisual {
                             return newHeight;
                         });
 
-                    // update x
-                    d3Select(this).attr("x", newWidth.toString());
+                    // update x. The drag is attached to lineGroupWrapperRightBorder, so it is the dragged node.
+                    this.lineGroupWrapperRightBorder.attr("x", newWidth.toString());
 
                     // Update clipping for collapse/expand all button
-                    const collapseLabel = self.collapseAllGroup.select(`text`);
-                    const text: string = self.collapsedTasks.length ? self.localizationManager.getDisplayName("Visual_Expand_All") : self.localizationManager.getDisplayName("Visual_Collapse_All");
+                    const collapseLabel = this.collapseAllGroup.select(`text`);
+                    const text: string = this.collapsedTasks.length ? this.localizationManager.getDisplayName("Visual_Expand_All") : this.localizationManager.getDisplayName("Visual_Collapse_All");
                     collapseLabel.text(text);
                     collapseLabel.call(AxisHelper.LabelLayoutStrategy.clip, newWidth - Gantt.GroupLabelSize - Gantt.CollapseAllBackgroundWidthPadding, textMeasurementService.svgEllipsis);
 
                     // Update clipping for task labels
-                    const taskLabelTextElements = self.lineGroup.selectAll<SVGTextElement, GroupedTask>(`.${Gantt.Label.className} .${Gantt.ClickableArea.className} text`);
+                    const taskLabelTextElements = this.lineGroup.selectAll<SVGTextElement, GroupedTask>(`.${Gantt.Label.className} .${Gantt.ClickableArea.className} text`);
                     taskLabelTextElements.text((task: GroupedTask) => task.name);
                     taskLabelTextElements.call(AxisHelper.LabelLayoutStrategy.clip, newWidth - Gantt.AxisLabelClip, textMeasurementService.svgEllipsis);
 
-                    const translateX: number = newWidth + self.margin.left + Gantt.SubtasksLeftMargin;
+                    const translateX: number = newWidth + this.margin.left + Gantt.SubtasksLeftMargin;
                     const scrollTop: number = ganttDiv.scrollTop;
-                    self.axisGroup.attr("transform", SVGManipulations.translate(translateX, Gantt.TaskLabelsMarginTop + scrollTop));
-                    self.chartGroup.attr("transform", SVGManipulations.translate(translateX, self.margin.top));
-                    self.collapseAllBackground.attr("width", newWidth + Gantt.CollapseAllBackgroundWidthPadding);
+                    this.axisGroup.attr("transform", SVGManipulations.translate(translateX, Gantt.TaskLabelsMarginTop + scrollTop));
+                    this.chartGroup.attr("transform", SVGManipulations.translate(translateX, this.margin.top));
+                    this.collapseAllBackground.attr("width", newWidth + Gantt.CollapseAllBackgroundWidthPadding);
                 })
-                .on("end", (event: D3DragEvent<SVGRectElement, { initialX: number; initialY: number; }, d3SubjectPosition>, datum: { initialX: number; initialY: number; }) => {
+                .on("end", (event: D3DragEvent<SVGRectElement, { initialX: number; }, d3SubjectPosition>, datum: { initialX: number; }) => {
                     const dx = event.x - datum.initialX;
                     const currentWidth = this.formattingSettings.taskLabels.taskLabelsGroup.general.width.value;
                     const newWidth = Math.max(currentWidth + dx, TaskLabelsCardSettings.MinWidth);
@@ -1026,9 +1031,9 @@ export class Gantt implements IVisual {
         const addedParents: string[] = [];
         taskColor = taskColor || Gantt.DefaultValues.TaskColor;
 
-        const values: GanttColumns<any> = GanttColumns.getCategoricalValues(dataView)!;
+        const values: GanttColumns<any> | null = GanttColumns.getCategoricalValues(dataView);
 
-        if (!values.Task) {
+        if (!values?.Task) {
             return tasks;
         }
 
@@ -1753,7 +1758,10 @@ export class Gantt implements IVisual {
         const legendTypes: LegendType = Gantt.getAllLegendTypes(dataView);
         this.hasHighlights = Gantt.hasHighlights(dataView);
 
-        const formatters: GanttChartFormatters = this.getFormatters(dataView, this.host.locale || "")!;
+        const formatters: GanttChartFormatters | null = this.getFormatters(dataView, this.host.locale || "");
+        if (!formatters) {
+            return null;
+        }
 
         const isDurationFilled: boolean = dataView.metadata.columns.findIndex(col => Gantt.hasRole(col, GanttRole.Duration)) !== -1,
             isEndDateFilled: boolean = dataView.metadata.columns.findIndex(col => Gantt.hasRole(col, GanttRole.EndDate)) !== -1,
@@ -3275,7 +3283,10 @@ export class Gantt implements IVisual {
      * @param milestoneType milestone type
      */
     private getMilestoneColor(milestoneType: string): string {
-        const milestone: MilestoneDataPoint = this.viewModel.milestoneData.dataPoints.find((dataPoint: MilestoneDataPoint) => dataPoint.name === milestoneType)!;
+        const milestone = this.viewModel.milestoneData.dataPoints.find((dataPoint: MilestoneDataPoint) => dataPoint.name === milestoneType);
+        if (!milestone) {
+            return this.colorHelper.getHighContrastColor("foreground", Gantt.DefaultValues.TaskColor);
+        }
 
         return this.colorHelper.getHighContrastColor("foreground", milestone.color);
     }
@@ -3283,7 +3294,10 @@ export class Gantt implements IVisual {
     private getMilestonePath(milestoneType: string, taskConfigHeight: number): string {
         let shape: string = "";
         const convertedHeight: number = Gantt.getBarHeight(taskConfigHeight);
-        const milestone: MilestoneDataPoint = this.viewModel.milestoneData.dataPoints.find((dataPoint: MilestoneDataPoint) => dataPoint.name === milestoneType)!;
+        const milestone = this.viewModel.milestoneData.dataPoints.find((dataPoint: MilestoneDataPoint) => dataPoint.name === milestoneType);
+        if (!milestone) {
+            return shape;
+        }
         switch (milestone.shapeType) {
             case MilestoneShape.Rhombus:
                 shape = drawDiamond(convertedHeight);
@@ -4006,7 +4020,10 @@ export class Gantt implements IVisual {
 
         this.chartGroup.attr("transform", SVGManipulations.translate(translateX + shiftX, margin.top));
 
-        const ganttDiv = this.ganttDiv.node()!;
+        const ganttDiv = this.ganttDiv.node();
+        if (!ganttDiv) {
+            return;
+        }
         const translateY: number = Gantt.TaskLabelsMarginTop + ganttDiv.scrollTop;
 
         this.axisGroup
